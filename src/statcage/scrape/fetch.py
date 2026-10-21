@@ -11,7 +11,7 @@ RAW_DIR = Path(__file__).resolve().parents[3] / "data" / "raw"
 
 USER_AGENT = "StatCage/0.1 (student project; github.com/Beglii/StatCage)"
 DELAY_SECONDS = 1.0
-MAX_RETRIES = 3
+MAX_RETRIES = 5
 
 _session = requests.Session()
 _session.headers["User-Agent"] = USER_AGENT
@@ -26,7 +26,9 @@ def cache_path(url: str) -> Path:
     name = parsed.path.strip("/") or "index"
     if parsed.query:
         name += "_" + parsed.query.replace("=", "-").replace("&", "_")
-    return RAW_DIR / f"{name}.html"
+    if not Path(name).suffix:
+        name += ".html"
+    return RAW_DIR / name
 
 
 def fetch(url: str, refresh: bool = False) -> str:
