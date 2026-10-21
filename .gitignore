@@ -1,0 +1,19 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Scraped and processed data (re-creatable, too big for git)
+/data/
+
+# Secrets (API keys, DB passwords)
+.env
+
+# PyCharm settings
+.idea/
