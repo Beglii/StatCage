@@ -3,6 +3,7 @@ from datetime import date
 import pytest
 
 from statcage.ingest.parse import (
+    id_from_url,
     parse_clock,
     parse_count,
     parse_date,
@@ -10,7 +11,17 @@ from statcage.ingest.parse import (
     parse_landed_attempted,
     parse_reach,
     parse_weight,
+    text_or_none,
 )
+
+
+def test_id_from_url():
+    assert id_from_url("http://ufcstats.com/event-details/55e94a9b525dcf45") == "55e94a9b525dcf45"
+
+
+def test_text_or_none():
+    assert text_or_none(" Orthodox ") == "Orthodox"
+    assert text_or_none("") is None
 
 
 def test_landed_attempted():

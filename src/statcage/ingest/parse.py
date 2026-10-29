@@ -13,6 +13,18 @@ def is_missing(value: str) -> bool:
     return value.strip() in MISSING
 
 
+def id_from_url(url: str) -> str:
+    """'http://ufcstats.com/fighter-details/93fe7332d16c6ad9' -> '93fe7332d16c6ad9'."""
+    return url.rsplit("/", 1)[-1]
+
+
+def text_or_none(value: str) -> str | None:
+    """Clean text value, or None if it is missing."""
+    if is_missing(value):
+        return None
+    return value.strip()
+
+
 def parse_count(value: str) -> int | None:
     """Knockdowns, submission attempts, reversals: '1.0' -> 1."""
     if is_missing(value):
