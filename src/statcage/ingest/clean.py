@@ -10,8 +10,10 @@ from statcage.ingest.parse import (
     fight_seconds,
     id_from_url,
     parse_clock,
+    parse_count,
     parse_date,
     parse_height,
+    parse_landed_attempted,
     parse_method,
     parse_outcome,
     parse_reach,
@@ -40,6 +42,19 @@ DIVISION_LIMITS = {
     "Middleweight": 185,
     "Light Heavyweight": 205,
     "Heavyweight": 265,
+}
+
+# Stat columns written as "landed of attempted", and the name prefix each one gets.
+LANDED_ATTEMPTED = {
+    "SIG.STR.": "sig",
+    "TOTAL STR.": "total",
+    "TD": "td",
+    "HEAD": "head",
+    "BODY": "body",
+    "LEG": "leg",
+    "DISTANCE": "distance",
+    "CLINCH": "clinch",
+    "GROUND": "ground",
 }
 
 
@@ -184,6 +199,79 @@ def clean_fights(events: pd.DataFrame, fighters: pd.DataFrame) -> pd.DataFrame:
     return fights
 
 
+def clean_fight_stats(events: pd.DataFrame, fights: pd.DataFrame) -> pd.DataFrame:
+    raw = read_raw("ufc_fight_stats.csv")
+
+    # Empty rows are placeholders for old fights that have no stats.
+    empty = raw["FIGHTER"] == ""
+    print(f"Dropped {empty.sum()} empty stat rows")
+    raw = raw[~empty]
+
+    # The stats file has no fight URL, only event + bout, so look the fight up in the
+    # results file. If two fights share an event + bout, we can't tell them apart.
+    results = read_raw("ufc_fight_results.csv")
+    results = results[results["EVENT"].isin(events["name"])]
+    fight_ids = {}
+    ambiguous = set()
+    for r in results.to_dict("records"):
+        key = (r["EVENT"], r["BOUT"])
+        if key in fight_ids:
+            ambiguous.add(key)
+        fight_ids[key] = id_from_url(r["URL"])
+
+    sides = fights.set_index("fight_id")[["fighter_a_id", "fighter_b_id"]].to_dict("index")
+
+    dropped = Counter()
+    rows = []
+    for r in raw.to_dict("records"):
+        key = (r["EVENT"], r["BOUT"])
+        if key in ambiguous:
+            dropped[f"two fights share {r['EVENT']}: {r['BOUT']}"] += 1
+            continue
+        if key not in fight_ids:
+            dropped[f"unlisted event {r['EVENT']}"] += 1
+            continue
+        fight_id = fight_ids[key]
+
+        # FIGHTER is always one side of the bout, so reuse the IDs clean_fights picked.
+        name_a, name_b = r["BOUT"].split(" vs. ")
+        if r["FIGHTER"] == name_a:
+            fighter_id = sides[fight_id]["fighter_a_id"]
+        elif r["FIGHTER"] == name_b:
+            fighter_id = sides[fight_id]["fighter_b_id"]
+        else:
+            raise ValueError(f"{r['FIGHTER']!r} is not in bout {r['BOUT']!r}")
+
+        row = {
+            "fight_id": fight_id,
+            "fighter_id": fighter_id,
+            "round": int(r["ROUND"].removeprefix("Round ")),
+            "kd": parse_count(r["KD"]),
+        }
+        for column, prefix in LANDED_ATTEMPTED.items():
+            row[f"{prefix}_landed"], row[f"{prefix}_attempted"] = parse_landed_attempted(r[column])
+        row["sub_att"] = parse_count(r["SUB.ATT"])
+        row["rev"] = parse_count(r["REV."])
+        row["ctrl_s"] = parse_clock(r["CTRL"])
+        rows.append(row)
+
+    for reason, count in sorted(dropped.items()):
+        print(f"Dropped {count} stat rows: {reason}")
+
+    stats = pd.DataFrame(rows)
+    stats["ctrl_s"] = stats["ctrl_s"].astype("Int64")
+
+    if stats.duplicated(["fight_id", "fighter_id", "round"]).any():
+        raise ValueError("Same fighter has two stat rows for one round")
+    per_round = stats.groupby(["fight_id", "round"])["fighter_id"].nunique()
+    if (per_round != 2).any():
+        raise ValueError(f"{(per_round != 2).sum()} rounds don't have exactly one row per fighter")
+
+    missing = ~fights["fight_id"].isin(stats["fight_id"])
+    print(f"{missing.sum()} fights have no stats")
+    return stats
+
+
 if __name__ == "__main__":
     events = clean_events()
     fighters = clean_fighters()
@@ -192,3 +280,9 @@ if __name__ == "__main__":
     print(fights.head(3).T, "\n")
     print(f"{len(fights):,} fights")
     print(fights.isna().sum())
+    print()
+    stats = clean_fight_stats(events, fights)
+    print()
+    print(stats.head(2).T, "\n")
+    print(f"{len(stats):,} stat rows")
+    print(stats.isna().sum()[stats.isna().sum() > 0])
