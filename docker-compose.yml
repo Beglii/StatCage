@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: statcage
+      POSTGRES_USER: statcage
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    ports:
+      # 5433 on this computer, so it doesn't clash with a Postgres already using 5432.
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+      # Runs once, when the database is first created.
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U statcage -d statcage"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  pgdata:
