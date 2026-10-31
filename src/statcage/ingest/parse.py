@@ -80,3 +80,82 @@ def parse_date(value: str) -> date | None:
         except ValueError:
             pass
     raise ValueError(f"Unrecognized date: {value!r}")
+
+
+OUTCOMES = {
+    "W/L": ("win", "a"),
+    "L/W": ("win", "b"),
+    "D/D": ("draw", None),
+    "NC/NC": ("no_contest", None),
+}
+
+
+def parse_outcome(value: str) -> tuple[str, str | None]:
+    """'W/L' -> ('win', 'a'): the result, and which listed fighter won."""
+    return OUTCOMES[value.strip()]
+
+
+def parse_method(method: str, details: str) -> tuple[str, str | None]:
+    """'Decision - Split' -> ('Decision', 'Split'); 'KO/TKO' + 'Punch to Head' -> ('KO/TKO', 'Punch to Head')."""
+    method = method.strip()
+    if method.startswith("Decision - "):
+        return "Decision", method.removeprefix("Decision - ")
+    if method == "TKO - Doctor's Stoppage":
+        return "KO/TKO", "Doctor's Stoppage"
+    return method, text_or_none(details)
+
+
+DIVISIONS = [
+    "Super Heavyweight",
+    "Light Heavyweight",
+    "Heavyweight",
+    "Middleweight",
+    "Welterweight",
+    "Lightweight",
+    "Featherweight",
+    "Bantamweight",
+    "Flyweight",
+    "Strawweight",
+    "Catch Weight",
+    "Open Weight",
+]
+
+
+def parse_weight_class(value: str) -> dict:
+    """"UFC Women's Flyweight Title Bout" -> division plus women's/title/interim/tournament flags."""
+    weight_class = None
+    for division in DIVISIONS:
+        if division in value:
+            weight_class = division
+            break
+    tournament = "Tournament" in value
+    return {
+        "weight_class": weight_class,
+        "womens": "Women's" in value,
+        "title_fight": ("Title" in value or "Championship" in value) and not tournament,
+        "interim": "Interim" in value,
+        "tournament": tournament,
+    }
+
+
+def parse_scheduled_rounds(time_format: str) -> int | None:
+    """'5 Rnd (5-5-5-5-5)' -> 5; 'No Time Limit' -> None."""
+    if " Rnd" not in time_format:
+        return None
+    return int(time_format.split(" Rnd")[0])
+
+
+def parse_round_lengths(time_format: str) -> list[int] | None:
+    """'3 Rnd (5-5-5)' -> [5, 5, 5] minutes; '1 Rnd + OT (12-3)' -> [12, 3]."""
+    if "(" not in time_format:
+        return None
+    inside = time_format[time_format.index("(") + 1 : time_format.index(")")]
+    return [int(minutes) for minutes in inside.split("-")]
+
+
+def fight_seconds(end_round: int, end_time_s: int, round_lengths: list[int] | None) -> int:
+    """Total seconds fought: all earlier rounds in full, plus the time into the last one."""
+    if round_lengths is None:
+        return end_time_s
+    earlier_rounds = sum(round_lengths[: end_round - 1]) * 60
+    return earlier_rounds + end_time_s
