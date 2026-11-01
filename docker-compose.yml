@@ -6,8 +6,9 @@ services:
       POSTGRES_USER: statcage
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
     ports:
-      # 5433 on this computer, so it doesn't clash with a Postgres already using 5432.
-      - "5433:5432"
+      # 5433 on this computer only (127.0.0.1), so it isn't reachable from the network
+      # and doesn't clash with a Postgres already using 5432.
+      - "127.0.0.1:5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql
       # Runs once, when the database is first created.
