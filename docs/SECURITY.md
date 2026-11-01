@@ -24,7 +24,8 @@ Layers, in the order a request meets them. Each one catches what the one before 
 - [ ] When any limit is hit, users still get the baseline answer plus a "detailed analysis is busy" message. *(phase 4-5)*
 
 ### Rate limits
-- [ ] Per IP: new AI explanations per hour and per day (starting point: 5/hour, 20/day). Cache hits don't count. *(phase 4)*
+- [ ] Every quota check goes through one function, `can_spend(requester)`. A requester starts as an IP address and later becomes a user account (see section 3). *(phase 4)*
+- [ ] Per requester: new AI analyses per hour and per day (starting point: 5/hour, 20/day). Cache hits and baseline predictions don't count. *(phase 4)*
 - [ ] AWS WAF rate-based rule on CloudFront to block floods before they reach the server. *(phase 6)*
 
 ### Bot check
@@ -68,6 +69,32 @@ Layers, in the order a request meets them. Each one catches what the one before 
 - [x] `uv.lock` pins exact package versions.
 - [ ] Dependabot alerts for vulnerable dependencies.
 - [ ] Logs and a simple daily summary: LLM spend, cache hit rate, rate-limit hits, errors. *(phase 4-6)*
+
+## 3. Accounts and payments roadmap
+
+Users never see LLM tokens. They spend **analyses**: one analysis is one new AI explanation, whatever it costs in tokens. Cached and baseline predictions are always free. The cost protections in section 1 apply at every stage.
+
+| Stage | Requester | Limit | Paid |
+|---|---|---|---|
+| 1. Launch | IP address | a few free analyses per day | no |
+| 2. Accounts | signed-in user | free analyses per month per account | no |
+| 3. Payments | signed-in user | free amount plus credit packs | yes |
+
+Move up a stage only with evidence: stage 2 once real users share IPs or dodge IP limits, stage 3 once real users keep hitting the free limit and the real cost per analysis is known.
+
+### Stage 2: accounts
+- [ ] Use an auth provider (Clerk, Auth0, Supabase Auth or AWS Cognito), not homemade login. Google sign-in makes fake free accounts harder.
+- [ ] FastAPI verifies the provider's JWT signature on every request before doing anything.
+- [ ] `can_spend(requester)` switches from IP to user ID; nothing else in the quota logic changes.
+
+### Stage 3: payments
+- [ ] Check Stripe's restricted businesses list first: fight predictions next to betting odds can count as gambling-related. Position StatCage as analytics and entertainment, not betting advice.
+- [ ] Terms of service, privacy policy and refund policy published before taking money.
+- [ ] Stripe Checkout (hosted page), so card numbers never touch our server.
+- [ ] Credit packs, not subscriptions, to start. Pack sizes chosen so Stripe's fixed fee per payment doesn't eat most of the price.
+- [ ] Credits are added only by a Stripe webhook whose signature the API verifies. The frontend can never say "payment succeeded".
+- [ ] Spending a credit happens in a database transaction, so two requests at once can't spend the same credit twice.
+- [ ] Stripe Radar plus Turnstile on the buy button against card testing bots.
 
 ## If something leaks
 
