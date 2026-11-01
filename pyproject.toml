@@ -10,7 +10,9 @@ requires-python = ">=3.13"
 dependencies = [
     "beautifulsoup4>=4.15.0",
     "pandas>=3.0.6",
+    "psycopg[binary]>=3.3.6",
     "pyarrow>=26.0.0",
+    "python-dotenv>=1.2.4",
     "requests>=2.34.2",
 ]
 
