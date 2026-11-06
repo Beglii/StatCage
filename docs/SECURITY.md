@@ -96,6 +96,18 @@ Move up a stage only with evidence: stage 2 once real users share IPs or dodge I
 - [ ] Spending a credit happens in a database transaction, so two requests at once can't spend the same credit twice.
 - [ ] Stripe Radar plus Turnstile on the buy button against card testing bots.
 
+## 4. Fantasy matchup rules
+
+These limits apply only to fantasy matchups. Real booked fights are always predicted, even across divisions. The API enforces every rule, so calling it directly can't bypass the fighter picker.
+
+- [ ] Block men vs. women matchups, using each fighter's category from their `womens` fight history. *(phase 4)*
+- [ ] Block matchups more than one weight class apart. *(phase 4)*
+- [ ] Each fighter's division is their most recent standard division as of the chosen date; catch weight and open weight fights don't count. Fighters without a standard division can't be picked. *(phase 4)*
+- [ ] Warn when the two profile dates are 5 or more years apart. Tune this after trying real matchups. *(phase 4-5)*
+- [ ] Label results "Fantasy matchup: for fun, not validated". Accuracy claims cover real fights only. *(phase 5)*
+
+Weight class order: Strawweight, Flyweight, Bantamweight, Featherweight, Lightweight, Welterweight, Middleweight, Light Heavyweight, Heavyweight.
+
 ## If something leaks
 
 1. Revoke the key or password at its source first (Anthropic Console, AWS, Postgres), then create a new one.
