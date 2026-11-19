@@ -62,6 +62,14 @@ PROFILE_COLUMNS = [
     "ctrl_per_15",
     "division",
     "women",
+    # Evidence: how much data each rate above is based on (the bottom of its fraction).
+    "decided_before",
+    "stat_minutes",
+    "ctrl_minutes",
+    "sig_attempted",
+    "opp_sig_attempted",
+    "td_attempted",
+    "opp_td_attempted",
 ]
 
 
@@ -141,8 +149,9 @@ def profiles_as_of(requests: pd.DataFrame, career: pd.DataFrame, fighters: pd.Da
         allow_exact_matches=False,
     ).merge(fighters[["fighter_id", "height_in", "reach_in", "dob"]], on="fighter_id", how="left")
 
-    # A debut has zero fights (a known fact) but unknown rates.
-    counts = ["fights", "wins", "losses", "win_streak"]
+    # A debut has zero fights and zero evidence (known facts) but unknown rates.
+    counts = ["fights", "wins", "losses", "win_streak", "stat_s", "ctrl_known_s",
+              "sig_attempted", "opp_sig_attempted", "td_attempted", "opp_td_attempted"]
     found[counts] = found[counts].fillna(0)
 
     minutes = found["stat_s"] / 60
@@ -169,6 +178,9 @@ def profiles_as_of(requests: pd.DataFrame, career: pd.DataFrame, fighters: pd.Da
         kd_absorbed_per_15=ratio(found["opp_kd"], per_15),
         sub_att_per_15=ratio(found["sub_att"], per_15),
         ctrl_per_15=ratio(found["ctrl_s"], found["ctrl_known_s"] / 900),
+        decided_before=found["wins"] + found["losses"],
+        stat_minutes=minutes,
+        ctrl_minutes=found["ctrl_known_s"] / 60,
     )
     return found[profile + PROFILE_COLUMNS]
 
