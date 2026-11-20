@@ -13,6 +13,7 @@ Example row: if A has a 76" reach and B has 72", diff_reach_in = +4. If A won, a
 import numpy as np
 import pandas as pd
 
+from statcage.features.split import VALIDATION_START
 from statcage.ingest.build import PROCESSED_DIR
 
 
@@ -20,10 +21,9 @@ from statcage.ingest.build import PROCESSED_DIR
 # Settings
 # ---------------------------------------------------------------------------
 
-# Fights before this date are the training era. Anything we "learn" from the data
-# (like league averages) must come from this era only, or test fights leak in.
-# The actual train / validation / test split happens in step 2c.
-VALIDATION_START = pd.Timestamp("2022-01-01")
+# VALIDATION_START (from split.py) marks the end of the training era. Anything we
+# "learn" from the data (like league averages) must come from before it, or later
+# fights leak in. Keeping the date in one place means the two can never disagree.
 
 # Fixed random seed, so the corner swap is identical on every rebuild
 # (same shuffle every time -> results can be repeated).
